@@ -1,42 +1,181 @@
-# ShipBlue Order Management System
+# ShipBlue Order Management System - Project Details
 
-A Django REST framework project for ShipBlue, an Egyptian shipping company, focused on order management, tracking, and customer management with JWT authentication.
+## Important Notes / Hints
 
-## Features
+*   **Environment Setup**: First, you have to create a virtual environment and use `pip install -r requirements.txt`.
+*   **Database**: The database used is **PostgreSQL**. 
+*   **API Testing**: For testing APIs, **Postman** was used.
+*   **Logic Location**: I tried to put the most important part of the logic in **models** instead of views to be reusable (*best practice*).
+*   **Authentication (JWT)**: I used **JWT (JSON Web Token)**. Please note that access tokens expire after a certain period (e.g., 5 minutes), so the user will have to get another token again using `http://127.0.0.1:8000/api/token/`.
+    *   **Admin User**: `jalal` with password `adminPass123` has **full privileges** (can create users, orders, update status, list all, or even delete).
+    *   **Normal User**: `normalUser` with password `normalpassword123` is permitted just to **read (GET methods)** and cannot perform delete/update operations. They can only access their own `OrderTracking` or `Customer` details(I applied authorization concept).
+*   **Authorization**: Both authentication and authorization concepts are applied.
+*   **Serializers**: I tried to put some constraints in the serializer files for each app.
+*   **Rate Limiting**: For rate limiting and to forbid attackers, I used `throttle_classes` to limit how many requests a user or IP can send.
+*   **Code Quality**: I tried to avoid redundancy and bad quality code to save computer's power/memory.
+*   **Pagination**: Pagination exists (a *bonus feature*).Pagination
+*   **Validation & Error Handling**: I tried to validate and test most cases/errors expected from the users, such as creating a new order with validation for a unique `tracking_number`.
+### consider these mock data to save time!
+## Postman Authentication & API Testing Guide
 
-- **Customer Management**: Create and manage customers with validation for Egyptian phone numbers and names
-- **Order Management**: Create, list, update, delete orders with status tracking
-- **Order Tracking**: Track order status history with timestamps and comments
-- **JWT Authentication**: Secure API access with JSON Web Tokens
-- **Role-based Permissions**: Admin users (adminJalal) have full access, regular users can only view their own orders
-- **Pagination**: Paginated API responses for better performance
-- **Filtering & Search**: Filter orders by status, customer name, and search functionality
-- **Rate Limiting**: Throttling to control API usage
-- **Validation**: Proper validation for phone numbers, customer names, and order status transitions
+This section provides a step-by-step guide on how to authenticate and test the API endpoints using Postman.
 
-## Models
+### Step 1: Obtain JWT Token 
+### Consider these data to save time!
 
-### Customer
-- `id`: Auto-generated primary key
-- `user`: Foreign key to Django User model (optional)
-- `name`: Customer name (validated to not contain numbers)
-- `phone`: Egyptian phone number (validated with regex: `01[0-9]{9}`)
+1.  **Create a new POST request in Postman**
+    *   **Method**: `POST`
+    *   **URL**: `http://127.0.0.1:8000/api/token/`
 
-### Order
-- `id`: Auto-generated primary key
-- `tracking_number`: Unique tracking identifier
-- `customer`: Foreign key to Customer
-- `status`: Order status (Created, Picked, Shipped, Delivered)
-- `created_at`: Timestamp when order was created
-- `updated_at`: Timestamp when order was last updated
+2.  **Set Headers**
+    *   `Content-Type: application/json` => always consider that
 
-### OrderTrackingEvent
-- `id`: Auto-generated primary key
-- `order`: Foreign key to Order
-- `status`: Status at this tracking event
-- `timestamp`: When the status change occurred
-- `comment`: Description of the status change
+3.  **Set Request Body**
+    *   Select `raw` and `JSON` format
+    *   Enter the following JSON for **Admin User**:
+    ```json
+    {
+      "username": "jalal",
+      "password": "adminPass123"
+    }
+    ```
+    *   Or for **Normal User**:
+    ```json
+    {
+      "username": "normalUser",
+      "password": "normalpassword123"
+    }
+    ```
 
+4.  **Send the request**
+    *   Click "Send"
+    *   You should receive a response like:
+    ```json
+    {
+      "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+      "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+    }
+    ```
+
+5.  **Copy the access token**
+    *   Copy the value of the `access` field (without quotes).
+
+### Step 2: Use Token for Authenticated Requests
+
+For all subsequent API requests that require authentication:
+
+1.  **Add Authorization Header**
+    *   Go to the `Headers` tab in your request
+    *   Add a new header:
+        *   **Key**: `Authorization`
+        *   **Value**: `Bearer YOUR_ACCESS_TOKEN_HERE`
+
+    **Example**:
+    ```
+    Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjQyNzg5MjAwLCJpYXQiOjE2NDI3ODg5MDAsImp0aSI6IjEyMzQ1Njc4OTAiLCJ1c2VyX2lkIjoxfQ.abc123def456
+    ```
+
+### Step 3: Test Authentication
+
+**Test with a protected endpoint (using Admin Token):**
+
+1.  **Create Customer (Admin Only)**
+    *   **Method**: `POST`
+    *   **URL**: `http://127.0.0.1:8000/api/customers/`
+    *   **Headers**:
+        *   `Content-Type: application/json`
+        *   `Authorization: Bearer YOUR_ACCESS_TOKEN`
+    *   **Body** (raw JSON):
+    ```json
+    {
+      "name": "Ahmed Mohamed",
+      "phone": "01234567890"
+    }
+    ```
+Note Try to enter same data twice like ahmed with same phone number, error appears(Error Validation/handling)
+## Complete API Testing Workflow Examples
+
+### 1. Authentication
+```
+POST http://127.0.0.1:8000/api/token/
+Content-Type: application/json
+
+{
+  "username": "jalal",
+  "password": "adminPass123"
+}
+```
+
+### 2. Create Customer (Admin Only)
+```
+POST http://127.0.0.1:8000/api/customers/
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+{
+  "name": "Ahmed Mohamed",
+  "phone": "01234567890"
+}
+```
+
+### 3. List Customers (Admin: all, Normal User: only their own if linked)
+```
+GET http://127.0.0.1:8000/api/customers/
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+### 4. Create Order (Admin Only)
+```
+POST http://127.0.0.1:8000/api/orders/
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+{
+  "tracking_number": "SB001",
+  "customer": 1,
+  "status": "Created"
+}
+```
+
+### 5. List Orders (Admin: all, Normal User: only their own)
+```
+GET http://127.0.0.1:8000/api/orders/
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+### 6. Update Order Status (Admin Only)
+```
+PATCH http://127.0.0.1:8000/api/orders/1/status/
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+{
+  "status": "Picked"
+}
+```
+
+### 7. Get Order Tracking History (Admin: any, Normal User: only their own orders)
+```
+GET http://127.0.0.1:8000/api/tracking/1/
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+## Token Management
+
+### Token Expiration
+*   Access tokens expire after a configured time (default 5 minutes).
+*   When a token expires, requests will return `401 Unauthorized`.
+*   You can obtain a new access token using the refresh token or by re-authenticating with username/password.
+
+### Refresh Token
+```
+POST http://127.0.0.1:8000/api/token/refresh/
+Content-Type: application/json
+
+{
+  "refresh": "YOUR_REFRESH_TOKEN_HERE"
+}
+```
 ## API Endpoints
 
 ### Authentication
@@ -93,93 +232,11 @@ Orders follow a strict status transition flow:
    ```bash
    python manage.py createsuperuser
    # Username: adminJalal
-   # Password: adminpassword123
-   ```
+   # Password: adminpassword12
+## Video Demo
 
-5. **Run development server**:
-   ```bash
-   python manage.py runserver
-   ```
+=> A video demo will be provided for the API testing.
 
-## User Accounts
-
-### Admin User
-- **Username**: adminJalal
-- **Password**: adminpassword123
-- **Permissions**: Full access to all endpoints
-
-### Normal User
-- **Username**: normalUser
-- **Password**: userpassword123
-- **Permissions**: Can only view their own order details
-
-## Testing with Postman
-
-1. **Get JWT Token**:
-   ```
-   POST /api/token/
-   {
-     "username": "adminJalal",
-     "password": "adminpassword123"
-   }
-   ```
-
-2. **Use Token in Headers**:
-   ```
-   Authorization: Bearer <your_access_token>
-   ```
-
-3. **Create Customer**:
-   ```
-   POST /api/customers/
-   {
-     "name": "Ahmed Mohamed",
-     "phone": "01234567890"
-   }
-   ```
-
-4. **Create Order**:
-   ```
-   POST /api/orders/
-   {
-     "tracking_number": "SB001",
-     "customer": 1,
-     "status": "Created"
-   }
-   ```
-
-5. **Update Order Status**:
-   ```
-   PATCH /api/orders/1/status/
-   {
-     "status": "Picked"
-   }
-   ```
-
-## Configuration
-
-The project is configured to use SQLite for development. For production with PostgreSQL, update the `DATABASES` setting in `settings.py`:
-
-```python
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'order_tracking_db',
-        'USER': 'postgres',
-        'PASSWORD': 'myPass123',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
-```
-
-## Security Features
-
-- JWT authentication with configurable token lifetime
-- Rate limiting (100 requests/day for anonymous, 1000/day for authenticated users)
-- Input validation and sanitization
-- CSRF protection
-- Proper permission classes for role-based access
 
 
 
