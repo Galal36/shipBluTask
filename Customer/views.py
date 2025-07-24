@@ -3,6 +3,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Customer
 from .serializers import CustomerSerializer
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
+from permissions import IsAdminOrReadOnly
 
 class IsAdminUser(permissions.BasePermission):
     """
@@ -15,7 +16,7 @@ class CustomerListCreateView(generics.ListCreateAPIView):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
     throttle_classes = [UserRateThrottle, AnonRateThrottle]
 
     def perform_create(self, serializer):
@@ -25,7 +26,5 @@ class CustomerDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
     throttle_classes = [UserRateThrottle, AnonRateThrottle]
-
-
