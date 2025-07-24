@@ -44,6 +44,7 @@ class OrderListCreateView(generics.ListCreateAPIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly] # Changed
     pagination_class = OrderPagination
+    
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'customer__name']
     search_fields = ['tracking_number', 'customer__name']

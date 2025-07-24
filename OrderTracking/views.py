@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions,filters
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import OrderTrackingEvent
 from .serializers import OrderTrackingEventSerializer
@@ -6,6 +6,9 @@ from Order.models import Order
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 from django.shortcuts import get_object_or_404
 from permissions import IsAdminOrReadOnly # Import the custom permission
+
+from django_filters.rest_framework import DjangoFilterBackend 
+
 
 class IsAdminOrOrderOwner(permissions.BasePermission):
     """
@@ -26,6 +29,13 @@ class OrderTrackingEventListView(generics.ListAPIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly] # Changed
     throttle_classes = [UserRateThrottle, AnonRateThrottle]
+      #  FILTERING AND SEARCHING ---
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'timestamp'] # Filter by status and timestamp
+    search_fields = ['status', 'comment'] # Search by status and comment
+    ordering_fields = ['timestamp', 'status'] # Order by timestamp and status
+
+
 
     def get_queryset(self):
         order_id = self.kwargs['order_id']
